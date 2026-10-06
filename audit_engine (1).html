@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Engine - Intelligent Transaction Auditor</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#070b19',
+                        cardBg: '#0f172a',
+                        cardHover: '#1e293b',
+                        neonCyan: '#06b6d4',
+                        neonBlue: '#3b82f6',
+                        neonEmerald: '#10b981',
+                        neonAmber: '#f59e0b',
+                        neonRose: '#f43f5e',
+                    },
+                    boxShadow: {
+                        'glow-cyan': '0 0 25px rgba(6, 182, 212, 0.25)',
+                        'glow-blue': '0 0 25px rgba(59, 130, 246, 0.25)',
+                        'glow-emerald': '0 0 25px rgba(16, 185, 129, 0.25)',
+                        'glow-amber': '0 0 25px rgba(245, 158, 11, 0.25)',
+                        'glow-rose': '0 0 25px rgba(244, 63, 94, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js for graphs and pie charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (xlsx) for Excel file reading/writing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- PapaParse for robust CSV parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #070b19; color: #f8fafc; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #070b19; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.1);
+        }
+        .glow-border {
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-100 antialiased selection:bg-cyan-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-glow-cyan">
+                <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wider bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">AUDIT ENGINE</h1>
+                <p class="text-xs text-slate-400">Intelligent Financial Transaction Risk Auditor & Typebot Dispatcher</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="hidden md:flex items-center space-x-2 text-xs bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="text-slate-300">Engine Status: <strong class="text-emerald-400">Ready</strong></span>
+            </div>
+            <button onclick="runAuditEngine()" class="relative group overflow-hidden rounded-xl p-px font-semibold text-xs shadow-glow-cyan transition-all duration-300 transform hover:scale-105 active:scale-95">
+                <span class="absolute inset-0 bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 animate-pulse"></span>
+                <span class="relative px-4 py-2 rounded-[11px] bg-slate-950 flex items-center space-x-2 text-cyan-300 group-hover:text-white transition-colors">
+                    <i data-lucide="play" class="w-4 h-4 fill-cyan-400 text-cyan-400 group-hover:fill-white group-hover:text-white"></i>
+                    <span>RUN AUDIT ENGINE</span>
+                </span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main App Container -->
+    <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <!-- Sidebar Tabs -->
+        <aside class="w-full md:w-64 glass-panel border-r border-slate-800/80 p-4 flex md:flex-col justify-around md:justify-start space-y-0 md:space-y-2 shrink-0">
+            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 shadow-glow-cyan">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Dashboard</span>
+            </button>
+            <button onclick="switchTab('engine')" id="tab-btn-engine" class="tab-btn flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                <i data-lucide="cpu" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Audit Engine & Rules</span>
+            </button>
+            <button onclick="switchTab('transactions')" id="tab-btn-transactions" class="tab-btn flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                <i data-lucide="database" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Transaction Explorer</span>
+            </button>
+            <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="tab-btn flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                <i data-lucide="trending-up" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Analytics & Trends</span>
+            </button>
+            <button onclick="switchTab('alerts')" id="tab-btn-alerts" class="tab-btn flex items-center space-x-3 w-full px-4 py-3 rounded-xl text-sm font-medium transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800/50">
+                <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                <span class="hidden md:inline">Auditor Alerts & Typebot</span>
+            </button>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+            <!-- TAB 1: DASHBOARD -->
+            <div id="tab-dashboard" class="tab-content space-y-6">
+                <!-- Welcome Banner -->
+                <div class="relative overflow-hidden rounded-2xl glass-panel p-8 glow-border">
+                    <div class="absolute -right-10 -bottom-10 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+                    <div class="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <span class="text-xs uppercase tracking-widest text-cyan-400 font-semibold px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20">Executive Overview</span>
+                            <h2 class="text-2xl md:text-3xl font-bold mt-2 text-white">Automated Transaction Audit Hub</h2>
+                            <p class="text-slate-400 text-sm mt-1 max-w-2xl">Monitor real-time compliance, track anomalies, review risk scoring, and instantly dispatch auditor verification requests via automated webhook simulation.</p>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button onclick="loadDefaultData()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-300 border border-slate-700 transition flex items-center space-x-2">
+                                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                <span>Reset Mock Data</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800/80 relative overflow-hidden group hover:border-cyan-500/40 transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Audited</p>
+                                <h3 id="metric-total" class="text-3xl font-bold text-white mt-1">0</h3>
+                            </div>
+                            <div class="p-3 rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                <i data-lucide="layers" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3 flex items-center space-x-1">
+                            <span class="text-blue-400 font-semibold">100%</span> <span>batch coverage</span>
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800/80 relative overflow-hidden group hover:border-emerald-500/40 transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Ideal Transactions</p>
+                                <h3 id="metric-ideal" class="text-3xl font-bold text-emerald-400 mt-1">0</h3>
+                            </div>
+                            <div class="p-3 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-glow-emerald">
+                                <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3 flex items-center space-x-1">
+                            <span id="pct-ideal" class="text-emerald-400 font-semibold">0%</span> <span>compliance score</span>
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800/80 relative overflow-hidden group hover:border-rose-500/40 transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Anomalies Detected</p>
+                                <h3 id="metric-anomaly" class="text-3xl font-bold text-rose-400 mt-1">0</h3>
+                            </div>
+                            <div class="p-3 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-glow-rose">
+                                <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3 flex items-center space-x-1">
+                            <span id="pct-anomaly" class="text-rose-400 font-semibold">0%</span> <span>mid-risk flagged</span>
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl border border-slate-800/80 relative overflow-hidden group hover:border-amber-500/40 transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Verification Req.</p>
+                                <h3 id="metric-verification" class="text-3xl font-bold text-amber-400 mt-1">0</h3>
+                            </div>
+                            <div class="p-3 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-glow-amber">
+                                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-3 flex items-center space-x-1">
+                            <span id="pct-verification" class="text-amber-400 font-semibold">0%</span> <span>pending auditor</span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800 lg:col-span-1 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-base font-semibold text-white flex items-center space-x-2">
+                                <i data-lucide="pie-chart" class="w-5 h-5 text-cyan-400"></i>
+                                <span>Status Distribution</span>
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Proportion of Ideal vs Anomalies vs Verification</p>
+                        </div>
+                        <div class="relative w-full h-64 my-4 flex items-center justify-center">
+                            <canvas id="statusPieChart"></canvas>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                <span class="block text-emerald-400 font-bold text-sm" id="count-ideal-badge">0</span>
+                                <span class="text-slate-400">Ideal</span>
+                            </div>
+                            <div class="p-2 rounded-lg bg-rose-500/10 border border-rose-500/20">
+                                <span class="block text-rose-400 font-bold text-sm" id="count-anomaly-badge">0</span>
+                                <span class="text-slate-400">Anomaly</span>
+                            </div>
+                            <div class="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                                <span class="block text-amber-400 font-bold text-sm" id="count-verification-badge">0</span>
+                                <span class="text-slate-400">Verify</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800 lg:col-span-2 flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-base font-semibold text-white flex items-center space-x-2">
+                                <i data-lucide="trending-up" class="w-5 h-5 text-cyan-400"></i>
+                                <span>Transaction Volume & Risk Trends</span>
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Daily transaction amounts mapped against risk thresholds</p>
+                        </div>
+                        <div class="relative w-full h-64 my-4">
+                            <canvas id="trendLineChart"></canvas>
+                        </div>
+                        <div class="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
+                            <span>Exposure Limit: $1,000 threshold</span>
+                            <span class="text-cyan-400 font-medium">Auto-updated via Audit Engine</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: AUDIT ENGINE & CRITERIA -->
+            <div id="tab-engine" class="tab-content hidden space-y-6">
+                <div class="glass-panel p-8 rounded-2xl border border-slate-800">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                                <i data-lucide="cpu" class="w-6 h-6 text-cyan-400"></i>
+                                <span>Audit Engine Rules & Scoring Matrix</span>
+                            </h2>
+                            <p class="text-slate-400 text-xs mt-1">Review the strict criteria used by the automated audit engine to evaluate incoming transaction batches.</p>
+                        </div>
+                        <button onclick="runAuditEngine()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 font-bold text-sm text-white shadow-glow-cyan hover:opacity-90 transition flex items-center space-x-2">
+                            <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                            <span>Execute Audit Engine Now</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rules Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                        <h3 class="text-base font-semibold text-cyan-400 flex items-center space-x-2">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i>
+                            <span>Ideal Transaction Criteria</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">A transaction is classified as <strong class="text-emerald-400">Ideal</strong> only if it satisfies all of the following:</p>
+                        <ul class="mt-4 space-y-3 text-sm">
+                            <li class="flex items-start space-x-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <i data-lucide="shield" class="w-5 h-5 text-emerald-400 shrink-0 mt-0.5"></i>
+                                <div>
+                                    <strong class="text-white block">Registered Vendor</strong>
+                                    <span class="text-xs text-slate-400">Vendor must exist in the verified registered vendors database.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start space-x-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <i data-lucide="clock" class="w-5 h-5 text-emerald-400 shrink-0 mt-0.5"></i>
+                                <div>
+                                    <strong class="text-white block">Business Hours (7:00 AM – 7:00 PM)</strong>
+                                    <span class="text-xs text-slate-400">Transaction timestamp must fall strictly within standard operational hours.</span>
+                                </div>
+                            </li>
+                            <li class="flex items-start space-x-3 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <i data-lucide="dollar-sign" class="w-5 h-5 text-emerald-400 shrink-0 mt-0.5"></i>
+                                <div>
+                                    <strong class="text-white block">Exposure Limit & Duplicacy</strong>
+                                    <span class="text-xs text-slate-400">Total amount must be $1,000 or less with zero historical duplication.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                        <h3 class="text-base font-semibold text-rose-400 flex items-center space-x-2">
+                            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                            <span>Risk Scoring & Classification Matrix</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Cumulative penalty points determine final transaction classification:</p>
+                        <div class="mt-4 space-y-3 text-xs">
+                            <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <span class="text-slate-300">Unregistered Vendor</span>
+                                <span class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-400 font-bold">+50 Points</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <span class="text-slate-300">Duplicate Invoice / Transaction</span>
+                                <span class="px-2.5 py-1 rounded-lg bg-rose-500/20 text-rose-400 font-bold">+40 Points</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <span class="text-slate-300">Off-Hour Transaction (Outside 7 AM - 7 PM)</span>
+                                <span class="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-400 font-bold">+20 Points</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+                                <span class="text-slate-300">Exposure Limit Exceeded (> $1,000)</span>
+                                <span class="px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-400 font-bold">+10 Points</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-3 gap-2 text-center text-xs font-semibold">
+                            <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Score &lt; 20<br><span class="text-white font-bold">Ideal</span></div>
+                            <div class="p-2 rounded-lg bg-rose-500/10 text-rose-400 border border-rose-500/30">Score 20-50<br><span class="text-white font-bold">Anomaly</span></div>
+                            <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30">Score &gt; 50<br><span class="text-white font-bold">Verify Req.</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dataset Management Section -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-6">
+                    <div>
+                        <h3 class="text-base font-semibold text-white flex items-center space-x-2">
+                            <i data-lucide="file-spreadsheet" class="w-5 h-5 text-cyan-400"></i>
+                            <span>Datasets & Excel/CSV Management</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 mt-1">Download sample templates, save them to your computer, or upload your custom CSV/Excel files for auditing.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Dataset 1 -->
+                        <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-800 flex flex-col justify-between space-y-4">
+                            <div>
+                                <span class="text-xs text-cyan-400 font-medium">Dataset 1</span>
+                                <h4 class="text-sm font-bold text-white mt-0.5">Registered Vendors (`registered_vendors.csv`)</h4>
+                                <p class="text-xs text-slate-400 mt-1">Contains authorized vendor IDs, names, and compliance categories.</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="downloadTemplate('vendors')" class="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-cyan-300 border border-slate-700 transition text-center">Download Template</button>
+                                <label class="flex-1 py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-medium text-slate-950 font-semibold transition text-center cursor-pointer">
+                                    Upload File
+                                    <input type="file" accept=".csv, .xlsx, .xls" onchange="handleFileUpload(event, 'vendors')" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Dataset 2 -->
+                        <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-800 flex flex-col justify-between space-y-4">
+                            <div>
+                                <span class="text-xs text-cyan-400 font-medium">Dataset 2</span>
+                                <h4 class="text-sm font-bold text-white mt-0.5">Historical Transactions (`historical_transactions.csv`)</h4>
+                                <p class="text-xs text-slate-400 mt-1">Used by the engine to cross-reference and flag duplicate invoices.</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="downloadTemplate('historical')" class="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-cyan-300 border border-slate-700 transition text-center">Download Template</button>
+                                <label class="flex-1 py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-medium text-slate-950 font-semibold transition text-center cursor-pointer">
+                                    Upload File
+                                    <input type="file" accept=".csv, .xlsx, .xls" onchange="handleFileUpload(event, 'historical')" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Dataset 3 -->
+                        <div class="bg-slate-900/60 p-5 rounded-xl border border-slate-800 flex flex-col justify-between space-y-4">
+                            <div>
+                                <span class="text-xs text-cyan-400 font-medium">Dataset 3</span>
+                                <h4 class="text-sm font-bold text-white mt-0.5">Current Batch (`current_batch.csv`)</h4>
+                                <p class="text-xs text-slate-400 mt-1">The active transaction batch queued for instant audit scoring.</p>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="downloadTemplate('current')" class="flex-1 py-2 px-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-cyan-300 border border-slate-700 transition text-center">Download Template</button>
+                                <label class="flex-1 py-2 px-3 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-xs font-medium text-slate-950 font-semibold transition text-center cursor-pointer">
+                                    Upload File
+                                    <input type="file" accept=".csv, .xlsx, .xls" onchange="handleFileUpload(event, 'current')" class="hidden">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: TRANSACTION EXPLORER -->
+            <div id="tab-transactions" class="tab-content hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="database" class="w-6 h-6 text-cyan-400"></i>
+                            <span>Transaction Explorer & Audit Ledger</span>
+                        </h2>
+                        <p class="text-slate-400 text-xs mt-1">Inspect individual transaction scores, rule infractions, timestamps, and classifications.</p>
+                    </div>
+                    <div class="flex items-center space-x-3 w-full md:w-auto">
+                        <div class="relative flex-1 md:w-64">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+                            <input type="text" id="txSearchInput" oninput="filterTransactions()" placeholder="Search ID, vendor, amount..." class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                        </div>
+                        <select id="txFilterStatus" onchange="filterTransactions()" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="ALL">All Statuses</option>
+                            <option value="Ideal">Ideal</option>
+                            <option value="Anomaly Detected">Anomaly Detected</option>
+                            <option value="Verification Required">Verification Required</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[10px]">
+                                    <th class="p-4">Tx ID</th>
+                                    <th class="p-4">Timestamp</th>
+                                    <th class="p-4">Vendor Name</th>
+                                    <th class="p-4">Amount</th>
+                                    <th class="p-4">Reg?</th>
+                                    <th class="p-4">Score</th>
+                                    <th class="p-4">Classification</th>
+                                    <th class="p-4">Infractions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionTableBody" class="divide-y divide-slate-800/60">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: ANALYTICS & TRENDS -->
+            <div id="tab-analytics" class="tab-content hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                    <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                        <i data-lucide="trending-up" class="w-6 h-6 text-cyan-400"></i>
+                        <span>Advanced Analytics & Risk Metrics</span>
+                    </h2>
+                    <p class="text-slate-400 text-xs mt-1">Deep dive into exposure volumes, risk score distribution, and temporal audit patterns.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                        <h3 class="text-sm font-semibold text-white mb-4">Risk Score Distribution Curve</h3>
+                        <div class="relative w-full h-72 flex items-center justify-center">
+                            <canvas id="riskBarChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl border border-slate-800">
+                        <h3 class="text-sm font-semibold text-white mb-4">Vendor Exposure vs Violation Frequency</h3>
+                        <div class="relative w-full h-72 flex items-center justify-center">
+                            <canvas id="vendorExposureChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: AUDITOR ALERTS & TYPEBOT -->
+            <div id="tab-alerts" class="tab-content hidden space-y-6">
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-white flex items-center space-x-2">
+                            <i data-lucide="bell-ring" class="w-6 h-6 text-amber-400"></i>
+                            <span>Auditor Verification Queue & Typebot Dispatch</span>
+                        </h2>
+                        <p class="text-slate-400 text-xs mt-1">Transactions flagged with <strong class="text-amber-400">Verification Required</strong> are automatically queued for auditor sign-off and Typebot webhook dispatch.</p>
+                    </div>
+                    <button onclick="dispatchTypebotBatch()" class="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-glow-amber transition flex items-center space-x-2">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Dispatch All Alerts via Typebot</span>
+                    </button>
+                </div>
+
+                <!-- Verification Items Table -->
+                <div class="glass-panel rounded-2xl border border-slate-800 overflow-hidden">
+                    <div class="p-4 border-b border-slate-800 bg-slate-900/60 flex justify-between items-center">
+                        <span class="text-xs font-semibold text-slate-300">Pending Auditor Verification Items (<span id="verificationCountBadge">0</span>)</span>
+                        <span class="text-xs text-amber-400">Simulated Email & Chatbot Webhook Active</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr class="border-b border-slate-800 bg-slate-900/80 text-slate-400 uppercase tracking-wider text-[10px]">
+                                    <th class="p-4">Tx ID</th>
+                                    <th class="p-4">Timestamp</th>
+                                    <th class="p-4">Vendor</th>
+                                    <th class="p-4">Amount</th>
+                                    <th class="p-4">Score</th>
+                                    <th class="p-4">Reason</th>
+                                    <th class="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="verificationTableBody" class="divide-y divide-slate-800/60">
+                                <!-- Dynamically populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Simulated Typebot UI Preview -->
+                <div class="glass-panel p-6 rounded-2xl border border-slate-800 space-y-4">
+                    <div class="flex items-center space-x-3 border-b border-slate-800 pb-3">
+                        <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center border border-cyan-500/30">
+                            <i data-lucide="bot" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-white">Typebot Auditor Assistant Simulator</h3>
+                            <p class="text-[11px] text-slate-400">Interactive conversational agent previewing automated auditor notifications</p>
+                        </div>
+                    </div>
+                    <div id="typebotChatLog" class="bg-slate-950/80 rounded-xl p-4 h-64 overflow-y-auto space-y-3 text-xs border border-slate-800">
+                        <div class="flex items-start space-x-2">
+                            <div class="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-slate-950 font-bold shrink-0">AI</div>
+                            <div class="bg-slate-900 p-3 rounded-2xl rounded-tl-none border border-slate-800 text-slate-200 max-w-lg">
+                                Hello Auditor. The Audit Engine has scanned the latest batch. 3 transactions require manual verification. Click "Dispatch All Alerts" above or test individual reviews.
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex space-x-2">
+                        <input type="text" id="typebotInput" placeholder="Type a message or review command..." class="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                        <button onclick="sendTypebotMessage()" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-xl transition">Send</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // Default Mock Datasets
+        let registeredVendors = [
+            { vendorId: "V001", vendorName: "Alpha Logistics", category: "Shipping" },
+            { vendorId: "V002", vendorName: "Beta Supplies Corp", category: "Office" },
+            { vendorId: "V003", vendorName: "Gamma Tech Solutions", category: "IT Hardware" },
+            { vendorId: "V004", vendorName: "Delta Consulting", category: "Services" },
+            { vendorId: "V005", vendorName: "Epsilon Raw Materials", category: "Manufacturing" }
+        ];
+
+        let historicalTransactions = [
+            { txId: "TX-H101", timestamp: "2026-06-01 10:30:00", vendorName: "Alpha Logistics", amount: 450.00 },
+            { txId: "TX-H102", timestamp: "2026-06-02 14:15:00", vendorName: "Beta Supplies Corp", amount: 890.50 },
+            { txId: "TX-H103", timestamp: "2026-06-03 09:00:00", vendorName: "Gamma Tech Solutions", amount: 1200.00 }
+        ];
+
+        let currentBatch = [
+            { txId: "TX-9001", timestamp: "2026-06-06 10:00:00", vendorName: "Alpha Logistics", amount: 350.00, registered: true, duplicate: false, hour: 10 },
+            { txId: "TX-9002", timestamp: "2026-06-06 21:30:00", vendorName: "Beta Supplies Corp", amount: 1250.00, registered: true, duplicate: false, hour: 21 },
+            { txId: "TX-9003", timestamp: "2026-06-06 11:45:00", vendorName: "Unknown Supplier X", amount: 2400.00, registered: false, duplicate: false, hour: 11 },
+            { txId: "TX-9004", timestamp: "2026-06-06 14:00:00", vendorName: "Alpha Logistics", amount: 450.00, registered: true, duplicate: true, hour: 14 },
+            { txId: "TX-9005", timestamp: "2026-06-06 08:30:00", vendorName: "Gamma Tech Solutions", amount: 850.00, registered: true, duplicate: false, hour: 8 },
+            { txId: "TX-9006", timestamp: "2026-06-06 20:00:00", vendorName: "Shadow LLC", amount: 150.00, registered: false, duplicate: false, hour: 20 },
+            { txId: "TX-9007", timestamp: "2026-06-06 15:20:00", vendorName: "Delta Consulting", amount: 500.00, registered: true, duplicate: false, hour: 15 },
+        ];
+
+        let auditedResults = [];
+        let statusPieChartInstance = null;
+        let trendLineChartInstance = null;
+        let riskBarChartInstance = null;
+        let vendorExposureChartInstance = null;
+
+        // Initialize application on load
+        window.onload = function() {
+            runAuditEngine();
+            lucide.createIcons();
+        };
+
+        // Tab Navigation Switcher
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-cyan-400', 'bg-cyan-500/10', 'border', 'border-cyan-500/30', 'shadow-glow-cyan');
+                btn.classList.add('text-slate-400');
+            });
+
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            activeBtn.classList.remove('text-slate-400');
+            activeBtn.classList.add('text-cyan-400', 'bg-cyan-500/10', 'border', 'border-cyan-500/30', 'shadow-glow-cyan');
+            lucide.createIcons();
+        }
+
+        // Core Audit Engine Algorithm
+        function runAuditEngine() {
+            auditedResults = currentBatch.map(tx => {
+                let score = 0;
+                let infractions = [];
+
+                // Check Registered Vendor
+                let isRegistered = registeredVendors.some(v => v.vendorName.toLowerCase() === tx.vendorName.toLowerCase());
+                if (!isRegistered) {
+                    score += 50;
+                    infractions.push("Unregistered vendor (+50)");
+                }
+
+                // Check Duplicate Invoice in historical or current batch
+                let isDuplicate = tx.duplicate || historicalTransactions.some(h => h.vendorName.toLowerCase() === tx.vendorName.toLowerCase() && h.amount === tx.amount);
+                if (isDuplicate) {
+                    score += 40;
+                    infractions.push("Duplicate transaction (+40)");
+                }
+
+                // Check Business Hours (7 AM to 7 PM => hours 7 to 19)
+                let txHour = tx.hour !== undefined ? tx.hour : new Date(tx.timestamp).getHours();
+                if (txHour < 7 || txHour > 19) {
+                    score += 20;
+                    infractions.push("Off-hour tx outside 7AM-7PM (+20)");
+                }
+
+                // Check Exposure Limit ($1,000 or less)
+                if (tx.amount > 1000) {
+                    score += 10;
+                    infractions.push("Exposure limit > $1,000 (+10)");
+                }
+
+                // Final Classification
+                let classification = "Ideal";
+                if (score >= 50) {
+                    classification = "Verification Required";
+                } else if (score >= 20) {
+                    classification = "Anomaly Detected";
+                }
+
+                if (infractions.length === 0) {
+                    infractions.push("Passed all criteria");
+                }
+
+                return {
+                    ...tx,
+                    score,
+                    classification,
+                    infractions: infractions.join(", "),
+                    registered: isRegistered
+                };
+            });
+
+            updateDashboardMetrics();
+            renderTransactionTable();
+            renderVerificationTable();
+            renderCharts();
+
+            // Show subtle notification toast or log
+            appendTypebotLog("Audit Engine executed successfully on " + currentBatch.length + " transactions.");
+        }
+
+        // Update Dashboard Metrics Cards
+        function updateDashboardMetrics() {
+            const total = auditedResults.length;
+            const ideal = auditedResults.filter(t => t.classification === "Ideal").length;
+            const anomaly = auditedResults.filter(t => t.classification === "Anomaly Detected").length;
+            const verification = auditedResults.filter(t => t.classification === "Verification Required").length;
+
+            document.getElementById('metric-total').innerText = total;
+            document.getElementById('metric-ideal').innerText = ideal;
+            document.getElementById('metric-anomaly').innerText = anomaly;
+            document.getElementById('metric-verification').innerText = verification;
+
+            document.getElementById('pct-ideal').innerText = total ? Math.round((ideal / total) * 100) + '%' : '0%';
+            document.getElementById('pct-anomaly').innerText = total ? Math.round((anomaly / total) * 100) + '%' : '0%';
+            document.getElementById('pct-verification').innerText = total ? Math.round((verification / total) * 100) + '%' : '0%';
+
+            document.getElementById('count-ideal-badge').innerText = ideal;
+            document.getElementById('count-anomaly-badge').innerText = anomaly;
+            document.getElementById('count-verification-badge').innerText = verification;
+            document.getElementById('verificationCountBadge').innerText = verification;
+        }
+
+        // Render Transaction Explorer Table
+        function renderTransactionTable() {
+            const tbody = document.getElementById('transactionTableBody');
+            tbody.innerHTML = '';
+
+            const search = document.getElementById('txSearchInput').value.toLowerCase();
+            const filter = document.getElementById('txFilterStatus').value;
+
+            const filtered = auditedResults.filter(tx => {
+                const matchesSearch = tx.txId.toLowerCase().includes(search) || tx.vendorName.toLowerCase().includes(search) || tx.amount.toString().includes(search);
+                const matchesFilter = filter === 'ALL' || tx.classification === filter;
+                return matchesSearch && matchesFilter;
+            });
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-6 text-center text-slate-500">No transactions found matching criteria.</td></tr>`;
+                return;
+            }
+
+            filtered.forEach(tx => {
+                let badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+                if (tx.classification === "Anomaly Detected") badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                if (tx.classification === "Verification Required") badgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/40 transition";
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-cyan-400">${tx.txId}</td>
+                    <td class="p-4 text-slate-400">${tx.timestamp}</td>
+                    <td class="p-4 font-medium text-white">${tx.vendorName}</td>
+                    <td class="p-4 font-mono text-slate-200">$${tx.amount.toFixed(2)}</td>
+                    <td class="p-4">${tx.registered ? '<span class="text-emerald-400">Yes</span>' : '<span class="text-rose-400">No</span>'}</td>
+                    <td class="p-4 font-bold text-slate-200">${tx.score}</td>
+                    <td class="p-4"><span class="px-2.5 py-1 rounded-full text-[10px] font-semibold border ${badgeClass}">${tx.classification}</span></td>
+                    <td class="p-4 text-slate-400 text-[11px]">${tx.infractions}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterTransactions() {
+            renderTransactionTable();
+        }
+
+        // Render Verification Queue Table
+        function renderVerificationTable() {
+            const tbody = document.getElementById('verificationTableBody');
+            tbody.innerHTML = '';
+
+            const verifications = auditedResults.filter(tx => tx.classification === "Verification Required");
+
+            if (verifications.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500">No transactions currently require verification. All clear!</td></tr>`;
+                return;
+            }
+
+            verifications.forEach(tx => {
+                let tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-900/40 transition";
+                tr.innerHTML = `
+                    <td class="p-4 font-mono text-cyan-400">${tx.txId}</td>
+                    <td class="p-4 text-slate-400">${tx.timestamp}</td>
+                    <td class="p-4 font-medium text-white">${tx.vendorName}</td>
+                    <td class="p-4 font-mono text-slate-200">$${tx.amount.toFixed(2)}</td>
+                    <td class="p-4 font-bold text-amber-400">${tx.score}</td>
+                    <td class="p-4 text-slate-300 text-[11px]">${tx.infractions}</td>
+                    <td class="p-4 text-right">
+                        <button onclick="approveTransaction('${tx.txId}')" class="px-3 py-1.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] font-semibold hover:bg-emerald-500/30 transition mr-1">Approve</button>
+                        <button onclick="rejectTransaction('${tx.txId}')" class="px-3 py-1.5 bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-lg text-[11px] font-semibold hover:bg-rose-500/30 transition">Reject</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Render Charts with Chart.js
+        function renderCharts() {
+            const idealCount = auditedResults.filter(t => t.classification === "Ideal").length;
+            const anomalyCount = auditedResults.filter(t => t.classification === "Anomaly Detected").length;
+            const verifyCount = auditedResults.filter(t => t.classification === "Verification Required").length;
+
+            // 1. Status Pie Chart
+            const pieCtx = document.getElementById('statusPieChart').getContext('2d');
+            if (statusPieChartInstance) statusPieChartInstance.destroy();
+            statusPieChartInstance = new Chart(pieCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Ideal', 'Anomaly Detected', 'Verification Req.'],
+                    datasets: [{
+                        data: [idealCount, anomalyCount, verifyCount],
+                        backgroundColor: ['#10b981', '#f43f5e', '#f59e0b'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#94a3b8', boxWidth: 12, font: { family: 'Inter', size: 11 } } }
+                    },
+                    cutout: '70%'
+                }
+            });
+
+            // 2. Trend Line Chart
+            const lineCtx = document.getElementById('trendLineChart').getContext('2d');
+            if (trendLineChartInstance) trendLineChartInstance.destroy();
+            trendLineChartInstance = new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: auditedResults.map(t => t.txId),
+                    datasets: [{
+                        label: 'Transaction Amount ($)',
+                        data: auditedResults.map(t => t.amount),
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(51, 65, 85, 0.2)' } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(51, 65, 85, 0.2)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 3. Risk Bar Chart
+            const barCtx = document.getElementById('riskBarChart').getContext('2d');
+            if (riskBarChartInstance) riskBarChartInstance.destroy();
+            riskBarChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: auditedResults.map(t => t.txId),
+                    datasets: [{
+                        label: 'Risk Score',
+                        data: auditedResults.map(t => t.score),
+                        backgroundColor: auditedResults.map(t => t.score > 50 ? '#f59e0b' : t.score >= 20 ? '#f43f5e' : '#10b981'),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(51, 65, 85, 0.2)' } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 4. Vendor Exposure Chart
+            const vendorCtx = document.getElementById('vendorExposureChart').getContext('2d');
+            if (vendorExposureChartInstance) vendorExposureChartInstance.destroy();
+            
+            // Aggregate amounts per vendor
+            let vendorMap = {};
+            auditedResults.forEach(t => {
+                vendorMap[t.vendorName] = (vendorMap[t.vendorName] || 0) + t.amount;
+            });
+
+            vendorExposureChartInstance = new Chart(vendorCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(vendorMap),
+                    datasets: [{
+                        label: 'Total Exposure ($)',
+                        data: Object.values(vendorMap),
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(51, 65, 85, 0.2)' } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Typebot & Email Dispatch Simulation
+        function dispatchTypebotBatch() {
+            const verifications = auditedResults.filter(t => t.classification === "Verification Required");
+            if (verifications.length === 0) {
+                appendTypebotLog("Webhook dispatch skipped: No transactions flagged for verification.");
+                return;
+            }
+
+            appendTypebotLog(`[TYPEBOT WEBHOOK DISPATCH] Triggering automated email alerts to auditor for ${verifications.length} flagged transactions...`);
+            
+            verifications.forEach((tx, idx) => {
+                setTimeout(() => {
+                    appendTypebotLog(`[EMAIL SENT] Auditor Alert dispatched for Tx #${tx.txId} (${tx.vendorName} - $${tx.amount}). Reason: ${tx.infractions}`);
+                }, (idx + 1) * 600);
+            });
+        }
+
+        function approveTransaction(txId) {
+            auditedResults = auditedResults.map(t => {
+                if (t.txId === txId) {
+                    return { ...t, classification: "Ideal", infractions: "Approved by Auditor" };
+                }
+                return t;
+            });
+            updateDashboardMetrics();
+            renderTransactionTable();
+            renderVerificationTable();
+            renderCharts();
+            appendTypebotLog(`Auditor reviewed and APPROVED transaction ${txId}. Status updated to Ideal.`);
+        }
+
+        function rejectTransaction(txId) {
+            auditedResults = auditedResults.map(t => {
+                if (t.txId === txId) {
+                    return { ...t, classification: "Anomaly Detected", infractions: "Rejected by Auditor - Fraudulent Flag" };
+                }
+                return t;
+            });
+            updateDashboardMetrics();
+            renderTransactionTable();
+            renderVerificationTable();
+            renderCharts();
+            appendTypebotLog(`Auditor reviewed and REJECTED transaction ${txId}. Flagged as Anomaly.`);
+        }
+
+        function appendTypebotLog(message) {
+            const chatLog = document.getElementById('typebotChatLog');
+            const time = new Date().toLocaleTimeString();
+            const div = document.createElement('div');
+            div.className = "flex items-start space-x-2";
+            div.innerHTML = `
+                <div class="w-6 h-6 rounded-full bg-cyan-500 flex items-center justify-center text-slate-950 font-bold shrink-0 text-[10px]">AI</div>
+                <div class="bg-slate-900 p-3 rounded-2xl rounded-tl-none border border-slate-800 text-slate-200 max-w-lg">
+                    <span class="block text-[10px] text-cyan-400 mb-0.5">${time}</span>
+                    ${message}
+                </div>
+            `;
+            chatLog.appendChild(div);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        function sendTypebotMessage() {
+            const input = document.getElementById('typebotInput');
+            const val = input.value.trim();
+            if (!val) return;
+
+            const chatLog = document.getElementById('typebotChatLog');
+            const time = new Date().toLocaleTimeString();
+            
+            // User message
+            const userDiv = document.createElement('div');
+            userDiv.className = "flex items-start space-x-2 justify-end";
+            userDiv.innerHTML = `
+                <div class="bg-cyan-600/20 border border-cyan-500/30 p-3 rounded-2xl rounded-tr-none text-slate-100 max-w-lg">
+                    <span class="block text-[10px] text-cyan-300 mb-0.5 text-right">${time}</span>
+                    ${val}
+                </div>
+                <div class="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-slate-200 font-bold shrink-0 text-[10px]">U</div>
+            `;
+            chatLog.appendChild(userDiv);
+            input.value = '';
+            chatLog.scrollTop = chatLog.scrollHeight;
+
+            // Bot response simulation
+            setTimeout(() => {
+                let reply = "I have logged your request. You can approve or reject verification items directly using the action buttons above.";
+                if (val.toLowerCase().includes('status') || val.toLowerCase().includes('summary')) {
+                    const verCount = auditedResults.filter(t => t.classification === "Verification Required").length;
+                    reply = `Current Audit Summary: ${auditedResults.length} total transactions. ${verCount} pending verification.`;
+                }
+                appendTypebotLog(reply);
+            }, 600);
+        }
+
+        // Excel / CSV Template Download & File Upload Handling
+        function downloadTemplate(type) {
+            let data = [];
+            let filename = "";
+
+            if (type === 'vendors') {
+                filename = "registered_vendors.csv";
+                data = [
+                    { vendorId: "V001", vendorName: "Alpha Logistics", category: "Shipping" },
+                    { vendorId: "V002", vendorName: "Beta Supplies Corp", category: "Office" }
+                ];
+            } else if (type === 'historical') {
+                filename = "historical_transactions.csv";
+                data = [
+                    { txId: "TX-H101", timestamp: "2026-06-01 10:30:00", vendorName: "Alpha Logistics", amount: 450.00 }
+                ];
+            } else if (type === 'current') {
+                filename = "current_batch.csv";
+                data = [
+                    { txId: "TX-9001", timestamp: "2026-06-06 10:00:00", vendorName: "Alpha Logistics", amount: 350.00, registered: true, duplicate: false, hour: 10 }
+                ];
+            }
+
+            const csv = Papa.unparse(data);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function handleFileUpload(event, type) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet);
+
+                if (json.length > 0) {
+                    if (type === 'vendors') {
+                        registeredVendors = json;
+                        alert("Successfully loaded " + json.length + " registered vendors.");
+                    } else if (type === 'historical') {
+                        historicalTransactions = json;
+                        alert("Successfully loaded " + json.length + " historical transactions.");
+                    } else if (type === 'current') {
+                        currentBatch = json;
+                        alert("Successfully loaded " + json.length + " transactions into current batch.");
+                        runAuditEngine();
+                    }
+                } else {
+                    alert("Uploaded file appears empty or formatted incorrectly.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function loadDefaultData() {
+            runAuditEngine();
+            alert("Mock data reset to default successfully!");
+        }
+    </script>
+</body>
+</html>
